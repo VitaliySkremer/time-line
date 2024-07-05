@@ -53,7 +53,8 @@ const success = () => {
     display: flex;
     align-items: center;
     height: 200px;
-
+    width: fit-content;
+    overflow: hidden;
     position: relative;
   }
 }

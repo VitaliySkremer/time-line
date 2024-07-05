@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, inject } from 'vue'
-import type { Ref} from 'vue'
+import type { Ref } from 'vue'
 import { getSecondsFromDate, addTimeRange } from '@/helpers/helpers'
 import type { IMediaFull } from '@/stores/mediaStore/media.type'
 import { isEquelDates } from '@/helpers/helpers'
@@ -51,25 +51,37 @@ const newMoveDate = ref()
 const textColor = computed(() => {
   return chroma(props.media.color).luminance() > 0.5 ? '#333' : '#fefefe'
 })
+
 const size = computed(() => {
-  let getProcentStart = 0
-  if (isEquelDates(props.media.timeStart, props.nowDate)) {
-    getProcentStart = (getSecondsFromDate(props.media.timeStart) / SECONDS_IN_DAY) * 100
-  }
-  const getProcentEnd = (getSecondsFromDate(props.media.timeEnd) / SECONDS_IN_DAY) * 100
+  let getProcentStart = (getSecondsFromDate(props.media.timeStart) / SECONDS_IN_DAY) * 100
+  let getProcentEnd = (getSecondsFromDate(props.media.timeEnd) / SECONDS_IN_DAY) * 100
+  let left = 0
 
-  const left = MAX_WIDTH_CONTAINER_1 * Number(getProcentStart)
-  const right = MAX_WIDTH_CONTAINER_1 * Number(getProcentEnd)
-
-  let width = 0
-  if (right < left) {
-    width = MAX_WIDTH_CONTAINER - left
-  } else {
-    width = right - left
+  if (!isEquelDates(props.media.timeStart, props.nowDate)) {
+    getProcentStart = 100 - getProcentStart
+    left = MAX_WIDTH_CONTAINER_1 * Number(getProcentStart) * -1
+    const procentAll = Math.abs(getProcentEnd + getProcentStart)
+    const width = MAX_WIDTH_CONTAINER_1 * procentAll
+    return {
+      left,
+      width
+    }
   }
+  left = MAX_WIDTH_CONTAINER_1 * Number(getProcentStart)
+  if (!isEquelDates(props.media.timeEnd, props.nowDate)) {
+    const procentAll = 100 - getProcentStart + getProcentEnd
+    let width = MAX_WIDTH_CONTAINER_1 * procentAll
+    return {
+      left,
+      width
+    }
+  }
+
+  const procentAll = Math.abs(getProcentEnd - getProcentStart)
+  let width = MAX_WIDTH_CONTAINER_1 * procentAll
   return {
     left,
-    width: Math.min(200, width)
+    width
   }
 })
 
@@ -94,13 +106,6 @@ onMounted(() => {
     function onMouseMove(event: MouseEvent) {
       isMove.value = true
       let newLeft = event.clientX - shiftX - OFFSET_CONTAINER + (timeline.value?.scrollLeft || 0)
-      if (newLeft < 0) {
-        newLeft = 0
-      }
-      let rightEdge = MAX_WIDTH_CONTAINER - element.value!.offsetWidth
-      if (newLeft > rightEdge) {
-        newLeft = rightEdge
-      }
 
       const proccentByPx = (newLeft / MAX_WIDTH_CONTAINER) * 100
       const newSecond = SECONDS_IN_DAY_1 * proccentByPx
@@ -108,10 +113,10 @@ onMounted(() => {
       newMoveDate.value = new Date(
         timeStart.getFullYear(),
         timeStart.getMonth(),
-        timeStart.getDate()
+        isEquelDates(props.nowDate, timeStart) ? timeStart.getDate() : timeStart.getDate() + 1
       )
-      newMoveDate.value.setSeconds(newSecond)
 
+      newMoveDate.value.setSeconds(newSecond)
       const range = {
         timeStart: newMoveDate.value,
         timeEnd: addTimeRange(newMoveDate.value, props.media.timeRange),
@@ -139,7 +144,7 @@ onMounted(() => {
         errorDown.value = false
         return
       }
-      if(!isMove.value) return;
+      if (!isMove.value) return
       store.setNewTimeStart(props.media.id, newMoveDate.value)
 
       setTimeout(() => (isMove.value = false))
